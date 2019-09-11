@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+set -e
+
+# set defaults
+#MIRROR="https://downloads.openwrt.org"
+MIRROR="https://mirror.kumi.systems/openwrt/"
+RELEASE="snapshot"
+#TARGET="ramips/mt7621"
+#PROFILE="ubiquiti_edgerouterx"
+#PACKAGES="-ppp -ppp-mod-pppoe -luci-proto-ppp luci-ssl wireguard luci-proto-wireguard"
+DESTINATION="."
+FILES=""
+COMMAND=""
+
+# print an error to stderr
+err() { printf 'err: %s\n' "$*" >&2; }
+
+# print usage information
+usage() {
+cat <<-HELP
+usage: $(basename "$0") [options]
+
+configure build target:
+  -r RELEASE    build a specific version ($RELEASE)
+  -t TARGET     build for a specific target ($TARGET)
+  -p PROFILE    build a specific profile ($PROFILE)
+  -i PACKAGES   include packages in firmware ($(printf '%.30s..' "$PACKAGES"))
+  -d DEST       export built firmware to directory ($DESTINATION)
+  -f DIRECTORY  include files in directory in firmware
+  -c CONFIG     source configuration from this file
+
+only list ... and exit:
+  -R            list releases from $MIRROR
+  -T            list targets for selected release
+  -P            list profiles for selected target
+
+HELP
+}
+
+# get a list of available releases
+list_releases() {
+  echo "available releases from $MIRROR:"
+  curl -fs "$MIRROR" |\
+  sed -n 's:.*a href.*\("\|/\)\([a-z0-9.]\+\)/targets.*:\2:p' |\
+  sort -rV |\
+  xargs -rn1 printf ' - %s\n';
+}
+
+# get a list of profiles for a given target
+list_profiles() {
+  echo "available profiles for $RELEASE/$TARGET:"
+  curl -fs "${CONFIGINFO}" |\
+  sed -n 's/^CONFIG_TARGET_DEVICE_\(.*\)_DEVICE_\(.*\)=y$/\2/p' |\
+  sort |\
+  xargs -rn1 printf ' - %s\n';
+}
+
+# get a list of targets by recursively parsing dirlist
+list_targets() {
+  echo "available targets for $RELEASE:"
+  curl -sfL "$TARGETS" |\
+  sed -n 's/.*class="n"><a href="\([^"]\+\)\/".*/\1/p' |\
+  while read arch; do 
+    curl -sfL "$TARGETS/$arch" |\
+    sed -n 's/.*class="n"><a href="\([^"]\+\)\/".*/ - '"$arch"'\/\1/p';
+  done;
+}
+
+# parse commandline arguments
+[[ $1 == --help ]] && { usage; exit 0; }
+while getopts "hr:t:p:i:f:d:c:RTP" opt; do
+  case "$opt" in
+    r) RELEASE=$OPTARG ;;
+    t) TARGET=$OPTARG ;;
+    p) PROFILE=$OPTARG ;;
+    i) PACKAGES=$OPTARG ;;
+    d) DESTINATION=$OPTARG ;;
+    f) FILES=$OPTARG ;;
+    c) source "$OPTARG" ;;
+    R) COMMAND="list_releases";;
+    T) COMMAND="list_targets";;
+    P) COMMAND="list_profiles";;
+    h) usage; exit 0; ;;
+    \?) exit 1; ;;
+  esac
+done
+
+# check for required variables
+required() {
+  local e=0
+  for var in "$@"; do
+    if [[ -z ${!var} ]]; then
+      err "variable $var is required"; e=1;
+    fi
+  done
+  if [[ $e -ne 0 ]]; then
+    usage >&2
+    exit $e
+  fi
+}
+
+# normalize snaphots naming
+[[ $RELEASE == snapshots ]] && RELEASE="snapshot"
+
+# construct paths for release/target combination
+if [[ $RELEASE == snapshot ]]; then
+  TARGETS="${MIRROR}/snapshots/targets"
+  TARGETDIR="${TARGETS}/${TARGET}"
+  IMAGEBUILDER="${TARGETDIR}/openwrt-imagebuilder-${TARGET////-}.Linux-x86_64.tar.xz"
+  CONFIGINFO="${TARGETDIR}/config.buildinfo"
+else
+  TARGETS="${MIRROR}/releases/${RELEASE}/targets"
+  TARGETDIR="${TARGETS}/${TARGET}"
+  IMAGEBUILDER="${TARGETDIR}/openwrt-imagebuilder-${RELEASE}-${TARGET////-}.Linux-x86_64.tar.xz"
+  CONFIGINFO="${TARGETDIR}/config.seed"
+fi
+
+# maybe execute a 'list' command
+if [[ -n $COMMAND ]]; then
+  case "$COMMAND" in
+    list_releases) list_releases; exit $?;;
+    list_targets)  required RELEASE; list_targets; exit $?;;
+    list_profiles) required RELEASE TARGET; list_profiles; exit $?;;
+    *) echo "unknown command: $COMMAND"; exit 1;;
+  esac
+fi
+
+# check if all required arguments are present
+required RELEASE TARGET PROFILE DESTINATION
+
+# get imagebuilder version information
+if [[ $RELEASE == snapshot ]]; then
+  VERSIONINFO="snapshot-$(curl -sf "${TARGETDIR}/version.buildinfo" || date --utc +%F)"
+else
+  VERSIONINFO="$RELEASE"
+fi
+
+# print reusable build information
+cat <<EOF
+
+# openwrtbuilder configuration
+MIRROR=${MIRROR@Q}
+RELEASE=${RELEASE@Q}
+TARGET=${TARGET@Q}
+PROFILE=${PROFILE@Q}
+PACKAGES=${PACKAGES@Q}
+FILES=${FILES@Q}
+
+EOF
+
+# resolve absolute directories
+[[ -n $FILES ]] && FILES=$(readlink -vf "$FILES")
+DESTINATION=$(readlink -vf "$DESTINATION")
+
+# construct the output archive path
+ARCHIVE="${DESTINATION}/openwrt-${TARGET////-}-${PROFILE}-${VERSIONINFO}.tar"
+
+# check if this archive exists already
+if [[ -e $ARCHIVE ]]; then
+  echo "err: archive exists already: $ARCHIVE" >&2
+  exit 1
+fi
+
+# switch to a temporary directory
+tmp=$(mktemp --tmpdir -d openwrtbuilder-XXXXXX)
+trap "rm -rf $tmp" EXIT
+cd "$tmp"
+
+# maybe copy context files
+if [[ -n $FILES ]]; then
+  # fail if it's not a directory
+  if [[ ! -d $FILES ]]; then
+    echo "not a directory: $FILES" >&2
+    exit 1
+  fi
+  cp -r --reflink=auto "$FILES" ./files/
+fi
+
+# write out a dockerfile dynamically
+cat > Dockerfile <<DOCKERFILE
+# build using debian
+FROM debian:stable as build
+
+# install requirements
+RUN apt-get update && apt-get install -y \
+  build-essential libncurses5-dev zlib1g-dev gawk git \
+  gettext libssl-dev xsltproc wget unzip python python3 curl
+
+# use a download directory
+WORKDIR /download
+
+# cache busting for new versions
+ENV VERSIONINFO=${VERSIONINFO}
+
+# download imagebuilder and signed checksums
+RUN for file in \
+  "${IMAGEBUILDER}" \
+  "${TARGETDIR}/sha256sums" \
+  "${TARGETDIR}/sha256sums.asc"; \
+  do curl -# -LO "\$file"; \
+done
+
+# import verification key of build system and verify signature and checksum
+RUN curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/626471F1.asc" | gpg --import &&\
+  echo "54CC74307A2C6DC9CE618269CD84BCED626471F1:6:" | gpg --import-ownertrust &&\
+  gpg --verify sha256sums.asc &&\
+  sha256sum --check sha256sums --ignore-missing
+
+# switch to build directory
+WORKDIR /build
+
+# extract imagebuilder
+RUN tar xf "/download/$(basename "$IMAGEBUILDER")" --strip-components=1
+
+$(if [[ -n $FILES ]]; then cat << FILES
+# copy files to be included
+COPY ./files /files
+FILES
+fi)
+
+# make image
+RUN make image PROFILE=${PROFILE@Q} PACKAGES=${PACKAGES@Q} $([[ -n $FILES ]] && echo "FILES=${FILES@Q}")
+
+# move built firmware to empty stage
+FROM scratch
+COPY --from=build "/build/bin/targets/$TARGET" "/"
+DOCKERFILE
+
+# build with img
+img build -o "type=tar,dest=$ARCHIVE" ./
