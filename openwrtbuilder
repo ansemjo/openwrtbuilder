@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+# Copyright (c) 2019 Anton Semjonov
+# Licensed under the MIT License
+
 # set defaults
 #MIRROR="https://downloads.openwrt.org"
 MIRROR="https://mirror.kumi.systems/openwrt/"
