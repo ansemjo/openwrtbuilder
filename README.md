@@ -10,11 +10,11 @@ can accelerate similar builds for the same architecture.
 
 ## INSTALLATION
 
-A release of `genuinetools/img` which includes commit [0ec03c6][commit] is
-required in your `PATH`. At the time of this writing, you'll need to compile
-from `master` manually.
+A release of `genuinetools/img` which includes [PR #256][pull] is required in
+your `PATH`. At the time of this writing, you'll need to compile from `master`
+manually.
 
-[commit]: https://github.com/genuinetools/img/commit/0ec03c62e5146
+[pull]: https://github.com/genuinetools/img/pull/256
 
 Head over to [genuinetools/img#installation][install] for installation
 instructions.
