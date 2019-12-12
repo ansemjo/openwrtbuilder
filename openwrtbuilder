@@ -5,8 +5,7 @@ set -e
 # Licensed under the MIT License
 
 # set defaults
-#MIRROR="https://downloads.openwrt.org"
-MIRROR="https://mirror.kumi.systems/openwrt/"
+MIRROR="https://downloads.openwrt.org"
 RELEASE="snapshot"
 #TARGET="ramips/mt7621"
 #PROFILE="ubiquiti_edgerouterx"
@@ -65,7 +64,7 @@ list_targets() {
   sed -n 's/.*class="n"><a href="\([^"]\+\)\/".*/\1/p' |\
   while read arch; do 
     curl -sfL "$TARGETS/$arch" |\
-    sed -n 's/.*class="n"><a href="\([^"]\+\)\/".*/ - '"$arch"'\/\1/p';
+    sed -n 's/.*class="n"><a href="\([^"]\+\)\/".*/ - '"${arch//\//\\/}"'\/\1/p';
   done;
 }
 
@@ -110,7 +109,7 @@ if [[ $RELEASE == snapshot ]]; then
   TARGETS="${MIRROR}/snapshots/targets"
   TARGETDIR="${TARGETS}/${TARGET}"
   IMAGEBUILDER="${TARGETDIR}/openwrt-imagebuilder-${TARGET////-}.Linux-x86_64.tar.xz"
-  CONFIGINFO="${TARGETDIR}/config.buildinfo"
+  CONFIGINFO="${TARGETDIR}/config.seed"
 else
   TARGETS="${MIRROR}/releases/${RELEASE}/targets"
   TARGETDIR="${TARGETS}/${TARGET}"
@@ -204,8 +203,11 @@ RUN for file in \
 done
 
 # import verification key of build system and verify signature and checksum
-RUN curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/626471F1.asc" | gpg --import &&\
+RUN \
+  curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/626471F1.asc" | gpg --import &&\
   echo "54CC74307A2C6DC9CE618269CD84BCED626471F1:6:" | gpg --import-ownertrust &&\
+  curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/15807931.asc" | gpg --import &&\
+  echo "AD0507363D2BCE9C9E36CEC4FBCB78F015807931:6:" | gpg --import-ownertrust &&\
   gpg --verify sha256sums.asc &&\
   sha256sum --check sha256sums --ignore-missing
 
