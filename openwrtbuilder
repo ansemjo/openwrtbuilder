@@ -208,6 +208,8 @@ RUN \
   echo "54CC74307A2C6DC9CE618269CD84BCED626471F1:6:" | gpg --import-ownertrust &&\
   curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/15807931.asc" | gpg --import &&\
   echo "AD0507363D2BCE9C9E36CEC4FBCB78F015807931:6:" | gpg --import-ownertrust &&\
+  curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/2074BE7A.asc" | gpg --import &&\
+  echo "D9C6901F45C9B86858687DFF28A39BC32074BE7A:6:" | gpg --import-ownertrust &&\
   gpg --verify sha256sums.asc &&\
   sha256sum --check sha256sums --ignore-missing
 
