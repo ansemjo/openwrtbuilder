@@ -109,12 +109,12 @@ if [[ $RELEASE == snapshot ]]; then
   TARGETS="${MIRROR}/snapshots/targets"
   TARGETDIR="${TARGETS}/${TARGET}"
   IMAGEBUILDER="${TARGETDIR}/openwrt-imagebuilder-${TARGET////-}.Linux-x86_64.tar.xz"
-  CONFIGINFO="${TARGETDIR}/config.seed"
+  CONFIGINFO="${TARGETDIR}/config.buildinfo"
 else
   TARGETS="${MIRROR}/releases/${RELEASE}/targets"
   TARGETDIR="${TARGETS}/${TARGET}"
   IMAGEBUILDER="${TARGETDIR}/openwrt-imagebuilder-${RELEASE}-${TARGET////-}.Linux-x86_64.tar.xz"
-  CONFIGINFO="${TARGETDIR}/config.seed"
+  CONFIGINFO="${TARGETDIR}/config.buildinfo"
 fi
 
 # maybe execute a 'list' command
