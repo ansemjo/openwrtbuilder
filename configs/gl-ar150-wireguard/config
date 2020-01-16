@@ -1,6 +1,6 @@
 # openwrtbuilder configuration
-RELEASE='18.06.5'
-TARGET='ar71xx/generic'
-PROFILE='gl-ar150'
+RELEASE='19.07.0'
+TARGET='ath79/generic'
+PROFILE='glinet_gl-ar150'
 PACKAGES='-ppp -ppp-mod-pppoe -luci-proto-ppp luci-ssl wireguard luci-proto-wireguard luci-app-wireguard'
 FILES='./files'
