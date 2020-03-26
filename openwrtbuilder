@@ -156,16 +156,9 @@ EOF
 
 # resolve absolute directories
 [[ -n $FILES ]] && FILES=$(readlink -vf "$FILES")
-DESTINATION=$(readlink -vf "$DESTINATION")
 
-# construct the output archive path
-ARCHIVE="${DESTINATION}/openwrt-${TARGET////-}-${PROFILE}-${VERSIONINFO}.tar"
-
-# check if this archive exists already
-if [[ -e $ARCHIVE ]]; then
-  echo "err: archive exists already: $ARCHIVE" >&2
-  exit 1
-fi
+# construct the build output path
+DESTINATION="$(readlink -vf "$DESTINATION")/openwrt-${TARGET////-}-${PROFILE}-${VERSIONINFO}"
 
 # switch to a temporary directory
 tmp=$(mktemp --tmpdir -d openwrtbuilder-XXXXXX)
@@ -182,15 +175,51 @@ if [[ -n $FILES ]]; then
   cp -r --reflink=auto "$FILES" ./files/
 fi
 
+# what tool to use for building
+export DOCKER_BUILDKIT=1
+BUILDER="docker"
+
+# build and cache the builder container with signing keys
+$BUILDER build -t openwrtbuilder - <<'DOCKERFILE'
+
+# use debian linux base
+FROM debian:stable
+
+# install required software and libraries
+RUN apt-get update \
+ && apt-get install -y \
+   build-essential \
+   libncurses5-dev \
+   zlib1g-dev \
+   gawk \
+   git \
+   gettext \
+   libssl-dev \
+   xsltproc \
+   wget \
+   unzip \
+   python \
+   python3 \
+   curl \
+   xxd \
+   signify-openbsd
+
+# download ed25519 signing keys
+RUN mkdir -p /signingkeys && \
+  curl -s "https://openwrt.org/docs/guide-user/security/signatures" |\
+  sed -n 's/.*"\(https:[^"]\+;a=blob_plain;f=usign\/[a-f0-9]\+\)".*/\1/p' |\
+  while read key; do \
+    echo "$key"; \
+    curl -sSfo "/signingkeys/$(basename "$key")" "$key"; \
+  done
+
+DOCKERFILE
+
 # write out a dockerfile dynamically
 cat > Dockerfile <<DOCKERFILE
-# build using debian
-FROM debian:stable as build
 
-# install requirements
-RUN apt-get update && apt-get install -y \
-  build-essential libncurses5-dev zlib1g-dev gawk git \
-  gettext libssl-dev xsltproc wget unzip python python3 curl
+# use cached builder image
+FROM openwrtbuilder as firmware
 
 # use a download directory
 WORKDIR /download
@@ -202,19 +231,14 @@ ENV VERSIONINFO=${VERSIONINFO}
 RUN for file in \
   "${IMAGEBUILDER}" \
   "${TARGETDIR}/sha256sums" \
-  "${TARGETDIR}/sha256sums.asc"; \
-  do curl -# -LO "\$file"; \
+  "${TARGETDIR}/sha256sums.sig"; \
+  do curl -# -fLO "\$file"; \
 done
 
-# import verification key of build system and verify signature and checksum
+# verify signature and checksum
 RUN \
-  curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/626471F1.asc" | gpg --import &&\
-  echo "54CC74307A2C6DC9CE618269CD84BCED626471F1:6:" | gpg --import-ownertrust &&\
-  curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/15807931.asc" | gpg --import &&\
-  echo "AD0507363D2BCE9C9E36CEC4FBCB78F015807931:6:" | gpg --import-ownertrust &&\
-  curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/2074BE7A.asc" | gpg --import &&\
-  echo "D9C6901F45C9B86858687DFF28A39BC32074BE7A:6:" | gpg --import-ownertrust &&\
-  gpg --verify sha256sums.asc &&\
+  pk=\$(sed 1d sha256sums.sig | base64 -d | tail -c +3 | xxd -ps -l 8) && \
+  signify-openbsd -Vm sha256sums -p "/signingkeys/\$pk" && \
   sha256sum --check sha256sums --ignore-missing
 
 # switch to build directory
@@ -234,8 +258,8 @@ RUN make image PROFILE=${PROFILE@Q} PACKAGES=${PACKAGES@Q} $([[ -n $FILES ]] && 
 
 # move built firmware to empty stage
 FROM scratch
-COPY --from=build "/build/bin/targets/$TARGET" "/"
+COPY --from=firmware "/build/bin/targets/$TARGET" "/"
 DOCKERFILE
 
-# build with img
-img build -o "type=tar,dest=$ARCHIVE" ./
+# build firmware
+$BUILDER build -o "type=local,dest=$DESTINATION" ./
