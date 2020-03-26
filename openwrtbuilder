@@ -13,6 +13,7 @@ RELEASE="latest"
 DESTINATION="."
 FILES=""
 COMMAND=""
+CONFGIVEN=0
 
 # print an error to stderr
 err() { printf 'err: %s\n' "$*" >&2; }
@@ -80,7 +81,7 @@ while getopts "hr:t:p:i:f:d:c:RTP" opt; do
     i) PACKAGES=$OPTARG ;;
     d) DESTINATION=$OPTARG ;;
     f) FILES=$OPTARG ;;
-    c) source "$OPTARG" ;;
+    c) source "$OPTARG"; CONFGIVEN=1 ;;
     R) COMMAND="list_releases";;
     T) COMMAND="list_targets";;
     P) COMMAND="list_profiles";;
@@ -88,6 +89,11 @@ while getopts "hr:t:p:i:f:d:c:RTP" opt; do
     \?) exit 1; ;;
   esac
 done
+
+# maybe source config in current directory
+if [[ $CONFGIVEN -ne 1 ]] && [[ -r OpenWrtBuilderFile ]]; then
+  source OpenWrtBuilderFile
+fi
 
 # check for required variables
 required() {
@@ -180,6 +186,7 @@ export DOCKER_BUILDKIT=1
 BUILDER="docker"
 
 # build and cache the builder container with signing keys
+echo '# build openwrtbuilder image ...'
 $BUILDER build -t openwrtbuilder - <<'DOCKERFILE'
 
 # use debian linux base
@@ -216,6 +223,7 @@ RUN mkdir -p /signingkeys && \
 DOCKERFILE
 
 # write out a dockerfile dynamically
+echo -e '\n# build firmware ...'
 cat > Dockerfile <<DOCKERFILE
 
 # use cached builder image
@@ -263,3 +271,4 @@ DOCKERFILE
 
 # build firmware
 $BUILDER build -o "type=local,dest=$DESTINATION" ./
+echo -e "\n# written to: $DESTINATION"
