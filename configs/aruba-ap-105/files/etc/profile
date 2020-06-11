@@ -26,7 +26,7 @@ export HOME=$(grep -e "^${USER:-root}:" /etc/passwd | cut -d ":" -f 6)
 export HOME=${HOME:-/root}
 
 # prompt line
-export PS1="\e[0;1m\H \e[38;5;9m\w \e[0;1m\\$ \e[0m"
+export PS1="\[\e[0;1m\]\H \[\e[38;5;9m\]\w \[\e[0;1m\]\\$ \[\e[0m\]"
 case "$TERM" in xterm*) export PS1='\[\e]0;\u@\h: \w\a\]'"$PS1" ;; esac
 
 # aliases
