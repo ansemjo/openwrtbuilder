@@ -14,6 +14,7 @@ DESTINATION="."
 FILES=""
 COMMAND=""
 CONFGIVEN=0
+VERBOSE=false
 
 # print an error to stderr
 err() { printf 'err: %s\n' "$*" >&2; }
@@ -31,6 +32,7 @@ configure build target:
   -d DEST       export built firmware to directory ($DESTINATION)
   -f DIRECTORY  include files in directory in firmware
   -c CONFIG     source configuration from this file
+  -v            be verbose, enable debugging
 
 only list ... and exit:
   -R            list releases from $MIRROR
@@ -73,7 +75,7 @@ list_targets() {
 
 # parse commandline arguments
 [[ $1 == --help ]] && { usage; exit 0; }
-while getopts "hr:t:p:i:f:d:c:RTP" opt; do
+while getopts "hr:t:p:i:f:d:c:vRTP" opt; do
   case "$opt" in
     r) RELEASE=$OPTARG ;;
     t) TARGET=$OPTARG ;;
@@ -85,6 +87,7 @@ while getopts "hr:t:p:i:f:d:c:RTP" opt; do
     R) COMMAND="list_releases";;
     T) COMMAND="list_targets";;
     P) COMMAND="list_profiles";;
+    v) VERBOSE="true";;
     h) usage; exit 0; ;;
     \?) exit 1; ;;
   esac
@@ -108,6 +111,11 @@ required() {
     exit $e
   fi
 }
+
+# maybe enable debugging
+if [[ $VERBOSE == true ]]; then
+  set -x
+fi
 
 # normalize snaphots naming
 [[ $RELEASE == snapshots ]] && RELEASE="snapshot"
@@ -187,7 +195,7 @@ BUILDER="docker"
 
 # build and cache the builder container with signing keys
 echo '# build openwrtbuilder image ...'
-$BUILDER build -t openwrtbuilder - <<'DOCKERFILE'
+$BUILDER build $([[ $VERBOSE == true ]] && echo --progress plain) -t openwrtbuilder - <<'DOCKERFILE'
 
 # use debian linux base
 FROM debian:stable
@@ -270,5 +278,5 @@ COPY --from=firmware "/build/bin/targets/$TARGET" "/"
 DOCKERFILE
 
 # build firmware
-$BUILDER build -o "type=local,dest=$DESTINATION" ./
+$BUILDER build $([[ $VERBOSE == true ]] && echo --progress plain) -o "type=local,dest=$DESTINATION" ./
 echo -e "\n# written to: $DESTINATION"
