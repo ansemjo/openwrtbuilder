@@ -262,7 +262,7 @@ FILES
 fi)
 
 # make image
-RUN make image PROFILE=${PROFILE@Q} PACKAGES=${PACKAGES@Q} $([[ -n $FILES ]] && echo "FILES=${FILES@Q}")
+RUN make image PROFILE=${PROFILE@Q} PACKAGES=${PACKAGES@Q} $([[ -n $FILES ]] && echo "FILES=/files")
 
 # move built firmware to empty stage
 FROM scratch
