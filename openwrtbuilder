@@ -94,8 +94,8 @@ while getopts "hr:t:p:i:f:d:c:vRTP" opt; do
 done
 
 # maybe source config in current directory
-if [[ $CONFGIVEN -ne 1 ]] && [[ -r OpenWrtBuilderFile ]]; then
-  source OpenWrtBuilderFile
+if [[ $CONFGIVEN -ne 1 ]] && [[ -r owrtbuildconf ]]; then
+  source owrtbuildconf
 fi
 
 # check for required variables
@@ -217,7 +217,8 @@ RUN apt-get update \
    python3 \
    curl \
    xxd \
-   signify-openbsd
+   signify-openbsd \
+   rsync
 
 # download ed25519 signing keys
 RUN mkdir -p /signingkeys && \
