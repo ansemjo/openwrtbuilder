@@ -13,7 +13,6 @@ RELEASE="latest"
 DESTINATION="."
 FILES=""
 COMMAND=""
-CONFGIVEN=0
 VERBOSE=false
 
 # print an error to stderr
@@ -73,6 +72,11 @@ list_targets() {
   done;
 }
 
+# maybe source config in current directory
+if [[ -r owrtbuildconf ]]; then
+  source owrtbuildconf
+fi
+
 # parse commandline arguments
 [[ $1 == --help ]] && { usage; exit 0; }
 while getopts "hr:t:p:i:f:d:c:vRTP" opt; do
@@ -83,7 +87,7 @@ while getopts "hr:t:p:i:f:d:c:vRTP" opt; do
     i) PACKAGES=$OPTARG ;;
     d) DESTINATION=$OPTARG ;;
     f) FILES=$OPTARG ;;
-    c) source "$OPTARG"; CONFGIVEN=1 ;;
+    c) source "$OPTARG" ;;
     R) COMMAND="list_releases";;
     T) COMMAND="list_targets";;
     P) COMMAND="list_profiles";;
@@ -92,11 +96,6 @@ while getopts "hr:t:p:i:f:d:c:vRTP" opt; do
     \?) exit 1; ;;
   esac
 done
-
-# maybe source config in current directory
-if [[ $CONFGIVEN -ne 1 ]] && [[ -r owrtbuildconf ]]; then
-  source owrtbuildconf
-fi
 
 # check for required variables
 required() {
