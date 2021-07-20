@@ -45,7 +45,7 @@ HELP
 # get a list of available releases
 get_releases() {
   curl -fs "$MIRROR" |\
-  sed -n 's:.*a href.*\("\|/\)\([a-z0-9.]\+\)/targets.*:\2:p' |\
+  sed -n 's:.*a href.*\("\|/\)\([a-z0-9.-]\+\)/targets.*:\2:p' |\
   sort -rV
 }
 list_releases() {
