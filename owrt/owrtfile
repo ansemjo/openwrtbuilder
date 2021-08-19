@@ -1,0 +1,8 @@
+#syntax=ansemjo/openwrt-imagebuilder
+mirror = "https://example.com"
+
+[image]
+Release = "latest"
+target = "ramips/mt7621"
+profile = "ubnt-erx"
+
