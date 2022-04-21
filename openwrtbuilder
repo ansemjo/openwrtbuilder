@@ -43,9 +43,11 @@ HELP
 
 # get a list of available releases
 get_releases() {
-  curl -fs "$MIRROR" |\
-  sed -n 's:.*a href.*\("\|/\)\([a-z0-9.-]\+\)/targets.*:\2:p' |\
-  sort -rV
+  echo "snapshots"
+  curl -fs "$MIRROR/releases/" |\
+  sed -n 's:.*a href="\([a-z0-9.-]\+\)/\?".*:\1:p' |\
+  grep -vE '^(faillogs|packages)' |\
+  sort -rV;
 }
 list_releases() {
   echo "available releases from $MIRROR:"
@@ -119,7 +121,7 @@ fi
 # normalize snaphots naming
 [[ $RELEASE == snapshots ]] && RELEASE="snapshot"
 # or retrieve latest release version
-[[ $RELEASE == latest ]] && RELEASE="$(get_releases | grep -v snapshot | head -1)"
+[[ $RELEASE == latest ]] && RELEASE="$(get_releases | grep -vE "(snapshot|-rc)" | head -1)"
 
 # construct paths for release/target combination
 if [[ $RELEASE == snapshot ]]; then
