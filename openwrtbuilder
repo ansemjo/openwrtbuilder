@@ -240,12 +240,9 @@ WORKDIR /download
 ENV VERSIONINFO=${VERSIONINFO}
 
 # download imagebuilder and signed checksums
-RUN for file in \
-  "${IMAGEBUILDER}" \
-  "${TARGETDIR}/sha256sums" \
-  "${TARGETDIR}/sha256sums.sig"; \
-  do curl -# -fLO "\$file"; \
-done
+ADD "${IMAGEBUILDER}"             /download/
+ADD "${TARGETDIR}/sha256sums"     /download/
+ADD "${TARGETDIR}/sha256sums.sig" /download/
 
 # verify signature and checksum
 RUN \
