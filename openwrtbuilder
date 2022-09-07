@@ -221,14 +221,8 @@ RUN apt-get update \
    signify-openbsd \
    rsync
 
-# download ed25519 signing keys
-RUN mkdir -p /signingkeys && \
-  curl -s "https://openwrt.org/docs/guide-user/security/signatures" |\
-  sed -n 's/.*"\(https:[^"]\+;a=blob_plain;f=usign\/[a-f0-9]\+\)".*/\1/p' |\
-  while read key; do \
-    echo "$key"; \
-    curl -sSfo "/signingkeys/$(basename "$key")" "$key"; \
-  done
+# download openwrt keyring with usign keys
+RUN git clone https://git.openwrt.org/keyring.git /keyring
 
 DOCKERFILE
 
@@ -256,7 +250,7 @@ done
 # verify signature and checksum
 RUN \
   pk=\$(sed 1d sha256sums.sig | base64 -d | tail -c +3 | xxd -ps -l 8) && \
-  signify-openbsd -Vm sha256sums -p "/signingkeys/\$pk" && \
+  signify-openbsd -Vm sha256sums -p "/keyring/usign/\$pk" && \
   sha256sum --check sha256sums --ignore-missing
 
 # switch to build directory
