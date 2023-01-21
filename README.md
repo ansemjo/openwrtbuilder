@@ -1,128 +1,93 @@
 # openwrtbuilder
 
-A script to automate building firmware images for OpenWRT routers with the
-imagebuilder SDK's provided for each target. Internally it generates a
-Dockerfile on the fly and builds that with `img`, which is a rootless and
-daemonless `buildkit` tool.
+A script to automate building OpenWRT firmware images for routers with the imagebuilder SDKs provided for each target. Internally it generates a Dockerfile on the fly and builds that with a buildkit-capable Docker runtime. Due to efficient layer caching, many firmwares for similar targets can be built quickly, because the imagebuilder only needs to be downloaded once.
 
-The container-based build enforces strict reproduceability and the layer caching
-can accelerate similar builds for the same architecture.
+My personal use-case was that I always wanted to install a handful of packages like `luci-ssl` and `wireguard-tools`. And honestly .. it was easier to just learn to use the imagebuilder than reinstall them each time after a sysupgrade.
 
 ## INSTALLATION
 
-A release of `genuinetools/img` which includes [PR #256][pull] is required in
-your `PATH`. At the time of this writing, you'll need to compile from `master`
-manually.
+In a previous version, this script required `genuinetools/img` because it was one of the only good possibilities for a rootless and buildkit-capable builder. Nowadays and modern `docker` binary will do. Whether you chose to use a rootless flavour is up to you but I strongly recommend it. So head over to [docs.docker.com](https://docs.docker.com/engine/install/ubuntu/) for installation instructions.
 
-[pull]: https://github.com/genuinetools/img/pull/256
-
-Head over to [genuinetools/img#installation][install] for installation
-instructions.
-
-[install]: https://github.com/genuinetools/img#installation
-
-Apart from that it's just a shell script which uses a few basic system commands
-that should be available on a common GNU/Linux system.
+Apart from that, it's just a shell script which uses a few basic system commands that should readily be available on a common Linux system with GNU coreutils.
 
 ```
-curl -LO https://raw.githubusercontent.com/ansemjo/openwrtbuilder/master/openwrtbuilder
+curl -LO https://raw.githubusercontent.com/ansemjo/openwrtbuilder/main/openwrtbuilder
 bash ./openwrtbuilder --help
 ```
 
 ## USAGE
 
-The build target and profile are configured with commandline flags. Additional
-packages to be installed and an optional filesystem tree to be included can also
-be specified. The options are based on the capabilities of the
-[OpenWRT imagebuilder](https://openwrt.org/docs/guide-user/additional-software/imagebuilder).
+The build target and profile are configured with commandline flags. Additional packages to be installed and an optional filesystem tree to be included can also be specified. The options are based on the capabilities of the [OpenWRT imagebuilder](https://openwrt.org/docs/guide-user/additional-software/imagebuilder).
 
-You can use `-R`, `-T` and `-t ... -P` to list available releases, targets and
-profiles for a particular target respectively.
+You can use `-R`, `-T` and `-t ... -P` to list available releases, targets and profiles for a particular target respectively.
 
 | flag | description |
 |------|-------------|
+| `-R` | list available releases |
+| `-T` | list available targets for chosen release (latest by default) |
+| `-t TARGET -P` | list available profiles (specific devices) for a given `TARGET` |
 | `-r RELEASE` | the release version, can be `snapshot` or a version like `18.06.4` |
-| `-t TARGET` | target architecture and chipset, e.g. `ar71xx/generic` |
-| `-p PROFILE` | profile for a particular device, e.g. in the above target: `archer-c7-v2` |
-| `-i PKGS` | include or exclude specific packages, e.g. `-ppp luci-ssl wireguard` |
-| `-d DESTDIR` | destination directory for the build firmware archive |
-| `-f DIRECTORY` | directory with a filesystem tree to include in firmware |
-| `-c CONFIG` | source config options from this bash-compatible file |
+| `-t TARGET` | target architecture and chipset, e.g. `ath79/generic` |
+| `-p PROFILE` | profile for a particular device, e.g. in the above target: `tplink_archer-c7-v2` |
+| `-i PKGS` | include or exclude specific packages,<br />e.g. "exclude `ppp` and include `luci-ssl`" with `-ppp luci-ssl` |
+| `-d DESTDIR` | destination directory for the built firmware archive |
+| `-f DIRECTORY` | directory with a filesystem tree to include in firmware<br />can be used for configuration files like `/etc/profile` |
+| `-c CONFIG` | source config options from this bash-compatible file<br />a file with the name `owrtbuildconf` in the current directory is used automatically |
 
-When building a specific firmware image, the configuration is printed on the
-terminal and can be copied to a file for later usage with the `-c` flag. See the
-[configs](configs/) directory for examples.
+When building a specific firmware image, the configuration is printed on the terminal and can be copied to a file for later usage with the `-c` flag. See the [configs](configs/) directory for examples.
 
-## EXAMPLE
+## EXAMPLES
 
-List available profiles for the `ar71xx/generic` target in the `18.06.4`
-release:
+List available profiles for the `ath79/generic` target in the `latest` release:
 
 ```
-$ openwrtbuilder -t ar71xx/generic -r 18.06.4 -P
-available profiles for 18.06.4/ar71xx/generic:
- - A60
- - ALFAAP120C
- - ALFAAP96
- - ALFANX
+$ openwrtbuilder -r latest -t ath79/generic -P
+available profiles for 22.03.3/ath79/generic:
+ - 8dev_carambola2
+ - 8dev_lima
 /* ... */
- - archer-c60-v2
- - archer-c7-v1
- - archer-c7-v2
- - archer-c7-v2-il
+ - tplink_archer-c7-v1
+ - tplink_archer-c7-v2
 /* ... */
- - zbt-we1526
- - ZCN1523H28
- - ZCN1523H516
+ - ziking_cpe46b
+ - zyxel_nbg6616
 ```
 
 Build a firmware image for the TP-Link Archer C7 v2:
 
 ```
-$ openwrtbuilder -t ar71xx/generic -r 18.06.4 -p archer-c7-v2
+$ openwrtbuilder -r latest -t ath79/generic -p tplink_archer-c7-v2
 
 # openwrtbuilder configuration
-MIRROR='https://mirror.kumi.systems/openwrt/'
-RELEASE='18.06.4'
-TARGET='ar71xx/generic'
-PROFILE='archer-c7-v2'
+MIRROR='https://downloads.openwrt.org'
+RELEASE='22.03.3'
+TARGET='ath79/generic'
+PROFILE='tplink_archer-c7-v2'
 PACKAGES=
 FILES=''
 
-Building image
-Setting up the rootfs... this may take a bit.
-[+] Building 73.1s (13/13) FINISHED
- => [internal] load build definition from Dockerfile                                                 0.1s
- => => transferring dockerfile: 1.49kB                                                               0.0s
- => [internal] load .dockerignore                                                                    0.1s
- => => transferring context: 2B                                                                      0.0s
- => [internal] load metadata for docker.io/library/debian:stable                                     2.0s
- => [build 1/8] FROM docker.io/library/debian:stable@sha256:6a3ead8cbca86c3c28c5f32d250df9203f7cb93  0.0s
- => => resolve docker.io/library/debian:stable@sha256:6a3ead8cbca86c3c28c5f32d250df9203f7cb939ed07a  0.0s
- => CACHED [build 2/8] RUN apt-get update && apt-get install -y   build-essential libncurses5-dev z  0.0s
- => CACHED [build 3/8] WORKDIR /download                                                             0.0s
- => [build 4/8] RUN for file in   "https://mirror.kumi.systems/openwrt//releases/18.06.4/targets/a  11.8s
- => [build 5/8] RUN curl "https://git.openwrt.org/?p=keyring.git;a=blob_plain;f=gpg/626471F1.asc" |  5.8s
- => [build 6/8] WORKDIR /build                                                                       2.1s
- => [build 7/8] RUN tar xf "/download/openwrt-imagebuilder-18.06.4-ar71xx-generic.Linux-x86_64.tar.  9.4s
- => [build 8/8] RUN make image PROFILE='archer-c7-v2' PACKAGES=                                     40.9s
- => [stage-1 1/1] COPY --from=build /build/bin/targets/ar71xx/generic /                              0.1s
- => exporting to client                                                                              0.5s
- => => sending tarball                                                                               0.5s
-Successfully built image
-$ ls
-openwrt-ar71xx-generic-archer-c7-v2-18.06.4.tar
-$ tar tf openwrt-ar71xx-generic-archer-c7-v2-18.06.4.tar
-openwrt-18.06.4-ar71xx-generic-archer-c7-v2-squashfs-factory-eu.bin
-openwrt-18.06.4-ar71xx-generic-archer-c7-v2-squashfs-factory-us.bin
-openwrt-18.06.4-ar71xx-generic-archer-c7-v2-squashfs-factory.bin
-openwrt-18.06.4-ar71xx-generic-archer-c7-v2-squashfs-sysupgrade.bin
-openwrt-18.06.4-ar71xx-generic-device-archer-c7-v2.manifest
-openwrt-18.06.4-ar71xx-generic-root.squashfs
-openwrt-18.06.4-ar71xx-generic-uImage-lzma.bin
-openwrt-18.06.4-ar71xx-generic-vmlinux-lzma.elf
-openwrt-18.06.4-ar71xx-generic-vmlinux.bin
-openwrt-18.06.4-ar71xx-generic-vmlinux.elf
-openwrt-18.06.4-ar71xx-generic-vmlinux.lzma
+# build openwrtbuilder image ...
+[+] Building 18.5s (5/6)                                                                                        
+ => [internal] load build definition from Dockerfile                                                       0.0s
+ => => transferring dockerfile: 497B                                                                       0.0s
+ => [internal] load .dockerignore                                                                          0.0s
+ => => transferring context: 2B                                                                            0.0s
+ => [internal] load metadata for docker.io/library/debian:stable                                           2.3s
+ => [1/3] FROM docker.io/library/debian:stable@sha256:12931ad2bfd4a9609cf8ef7898f113d67dce8058f0c27f01c9  10.3s
+ => => resolve docker.io/library/debian:stable@sha256:12931ad2bfd4a9609cf8ef7898f113d67dce8058f0c27f01c90  0.0s
+/* ... */
+```
+
+This will result in a directory with factory and sysupgrade images, depending on the specific profile:
+
+```
+$ ls openwrt-ath79-generic-tplink_archer-c7-v2-22.03.3/
+openwrt-22.03.3-ath79-generic-tplink_archer-c7-v2.manifest
+openwrt-22.03.3-ath79-generic-tplink_archer-c7-v2-squashfs-factory.bin
+openwrt-22.03.3-ath79-generic-tplink_archer-c7-v2-squashfs-factory-eu.bin
+openwrt-22.03.3-ath79-generic-tplink_archer-c7-v2-squashfs-factory-us.bin
+openwrt-22.03.3-ath79-generic-tplink_archer-c7-v2-squashfs-sysupgrade.bin
+profiles.json
 sha256sums
 ```
+
