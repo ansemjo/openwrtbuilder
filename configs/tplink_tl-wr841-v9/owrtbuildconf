@@ -1,0 +1,6 @@
+# TP-Link TL-WR841ND v9 [https://openwrt.org/de/toh/tp-link/tl-wr841nd]
+RELEASE='19.07.10' # last release for this hardware
+TARGET='ar71xx/tiny'
+PROFILE='tl-wr841-v9'
+PACKAGES='-ppp -ppp-mod-pppoe -luci-proto-ppp luci-ssl'
+FILES='./files'
