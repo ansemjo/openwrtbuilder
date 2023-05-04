@@ -51,4 +51,4 @@ jobs:
         with:
           name: ${{ matrix.config }}
           path: configs/${{ matrix.config }}/
-          retention-days: 180
+          retention-days: 90
