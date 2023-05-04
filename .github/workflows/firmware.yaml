@@ -1,0 +1,54 @@
+name: build firmwares
+
+on:
+  # build on new commits or manual triggers
+  push: { branches: [ main, devel ] }
+  workflow_dispatch:
+
+jobs:
+
+  # create a build matrix from available configurations
+  # https://code.dblock.org/2021/09/03/generating-task-matrix-by-looping-over-repo-files-with-github-actions.html
+  list-configs:
+    runs-on: ubuntu-latest
+    outputs:
+      configs: ${{ steps.listing.outputs.configs }}
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: list device configurations
+        id: listing
+        run: |
+          # list directories and create a json array for output
+          find configs/ -maxdepth 2 -type f -name owrtbuildconf -printf '%h\n' \
+          | sed 's:configs/::' \
+          | jq -Rsc 'split("\n")[:-1]' \
+          | sed 's:^:configs=:' >> $GITHUB_OUTPUT
+
+  # compile the firmware for configurations listed above
+  build:
+    runs-on: ubuntu-latest
+    needs: list-configs
+    strategy:
+      fail-fast: false # do not stop others if one config fails
+      matrix:
+        config: ${{ fromJson(needs.list-configs.outputs.configs) }}
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: build firmware image
+        run: |
+          cd configs/${{ matrix.config }}/
+          bash "$GITHUB_WORKSPACE/openwrtbuilder"
+
+      - name: upload firmware artifact
+        uses: actions/upload-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: ${{ matrix.config }}
+          path: configs/${{ matrix.config }}/
+          retention-days: 180
