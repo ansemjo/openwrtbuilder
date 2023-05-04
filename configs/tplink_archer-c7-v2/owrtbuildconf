@@ -1,0 +1,6 @@
+# TP-Link Archer C7 [https://openwrt.org/toh/tp-link/archer_c7]
+RELEASE='22.03.5'
+TARGET='ath79/generic'
+PROFILE='tplink_archer-c7-v2'
+PACKAGES='-ppp -ppp-mod-pppoe -luci-proto-ppp luci-ssl dmesg vim'
+FILES='../ubnt_edgerouter-x/files'
