@@ -1,6 +1,0 @@
-# openwrtbuilder configuration
-RELEASE='latest'
-TARGET='ar71xx/generic'
-PROFILE='gl-ar750'
-PACKAGES='-ppp -ppp-mod-pppoe -luci-proto-ppp luci-ssl wireguard luci-proto-wireguard luci-app-wireguard qrencode bash libreadline'
-FILES='./files'
