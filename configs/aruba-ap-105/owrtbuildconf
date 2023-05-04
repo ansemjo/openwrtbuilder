@@ -1,7 +1,0 @@
-# openwrtbuilder configuration for knegge's aruba deployment
-RELEASE='latest'
-TARGET='ath79/generic'
-PROFILE='aruba_ap-105'
-PACKAGES='luci-ssl'
-FILES='./files'
-
