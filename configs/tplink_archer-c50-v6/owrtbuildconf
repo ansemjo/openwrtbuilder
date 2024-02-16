@@ -1,0 +1,7 @@
+# TP-Link Archer C50 v6 [https://openwrt.org/toh/tp-link/archer-c50]
+# at the time of this writing, not yet supported in release
+RELEASE='snapshot'
+TARGET='ramips/mt76x8'
+PROFILE='tplink_archer-c50-v6'
+PACKAGES='-ppp -ppp-mod-pppoe -luci-proto-ppp luci-ssl dmesg vim'
+FILES='../ubnt_edgerouter-x/files'
