@@ -199,7 +199,7 @@ echo '# build openwrtbuilder image ...'
 $BUILDER build $([[ $VERBOSE == true ]] && echo --progress plain) -t openwrtbuilder - <<'DOCKERFILE'
 
 # use debian linux base
-FROM debian:stable
+FROM debian:bookworm
 
 # install required software and libraries
 RUN apt-get update \
@@ -214,8 +214,10 @@ RUN apt-get update \
    xsltproc \
    wget \
    unzip \
-   python \
    python3 \
+   python-is-python3 \
+   python3-distutils \
+   file \
    curl \
    xxd \
    signify-openbsd \
