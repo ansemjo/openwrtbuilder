@@ -44,6 +44,7 @@ jobs:
         run: |
           cd configs/${{ matrix.config }}/
           bash "$GITHUB_WORKSPACE/openwrtbuilder"
+          if [[ -x prepare-flashable.sh ]]; then ./prepare-flashable.sh; fi
 
       - name: upload firmware artifact
         uses: actions/upload-artifact@v3
