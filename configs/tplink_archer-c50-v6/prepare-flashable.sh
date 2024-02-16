@@ -18,5 +18,5 @@ echo "prepend the bootloader to all built sysupgrades ..."
 for upgrade in **/openwrt-*-squashfs-sysupgrade.bin; do
   out="${upgrade%-sysupgrade.bin}-stockflashable.bin"
   echo "+ $out"
-  cat bootloader.bin "$upgrade" >> "$out"
+  cat bootloader.bin "$upgrade" > "$out"
 done
