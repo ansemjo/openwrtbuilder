@@ -6,7 +6,7 @@ My personal use-case was that I always wanted to install a handful of packages l
 
 ## INSTALLATION
 
-In a previous version, this script required `genuinetools/img` because it was one of the only good possibilities for a rootless and buildkit-capable builder. Nowadays and modern `docker` binary will do. Whether you chose to use a rootless flavour is up to you but I strongly recommend it. So head over to [docs.docker.com](https://docs.docker.com/engine/install/ubuntu/) for installation instructions.
+In a previous version, this script required `genuinetools/img` because it was one of the only good possibilities for a rootless and buildkit-capable builder. Nowadays any modern `docker` binary will do. Whether you chose to use a rootless flavour is up to you but I strongly recommend it. So head over to [docs.docker.com](https://docs.docker.com/engine/install/ubuntu/) for installation instructions.
 
 Apart from that, it's just a shell script which uses a few basic system commands that should readily be available on a common Linux system with GNU coreutils.
 
@@ -24,15 +24,15 @@ You can use `-R`, `-T` and `-t ... -P` to list available releases, targets and p
 | flag | description |
 |------|-------------|
 | `-R` | list available releases |
-| `-T` | list available targets for chosen release (latest by default) |
-| `-t TARGET -P` | list available profiles (specific devices) for a given `TARGET` |
 | `-r RELEASE` | the release version, can be `snapshot` or a version like `18.06.4` |
+| `-T` | list available targets for chosen release (latest by default) |
 | `-t TARGET` | target architecture and chipset, e.g. `ath79/generic` |
+| `-t TARGET -P` | list available profiles (specific devices) for a given `TARGET` |
 | `-p PROFILE` | profile for a particular device, e.g. in the above target: `tplink_archer-c7-v2` |
-| `-i PKGS` | include or exclude specific packages,<br />e.g. "exclude `ppp` and include `luci-ssl`" with `-ppp luci-ssl` |
-| `-d DESTDIR` | destination directory for the built firmware archive |
+| `-i PKGS` | include or exclude specific packages,<br />e.g. exclude `ppp` and include `luci-ssl` with `-i "-ppp luci-ssl"` |
+| `-d DESTDIR` | destination directory for the built firmware archive<br />a concatenation of release version, target, profile and timestamp by default |
 | `-f DIRECTORY` | directory with a filesystem tree to include in firmware<br />can be used for configuration files like `/etc/profile` |
-| `-c CONFIG` | source config options from this bash-compatible file<br />a file with the name `owrtbuildconf` in the current directory is used automatically |
+| `-c CONFIG` | source config options from this bash-compatible file<br />by default, `owrtbuildconf` in the current directory is used automatically, if found |
 
 When building a specific firmware image, the configuration is printed on the terminal and can be copied to a file for later usage with the `-c` flag. See the [configs](configs/) directory for examples.
 
