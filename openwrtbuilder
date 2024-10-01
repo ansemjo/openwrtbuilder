@@ -234,7 +234,7 @@ echo -e '\n# build firmware ...'
 cat > Dockerfile <<DOCKERFILE
 
 # use cached builder image
-FROM openwrtbuilder as firmware
+FROM openwrtbuilder AS firmware
 
 # use a download directory
 WORKDIR /download
