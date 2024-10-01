@@ -1,6 +1,5 @@
 # Aruba AP-105 [https://openwrt.org/toh/aruba/ap-105]
-# for Knegge's deployment
-RELEASE='22.03.5'
+RELEASE='23.05.5'
 TARGET='ath79/generic'
 PROFILE='aruba_ap-105'
 PACKAGES='luci-ssl'
