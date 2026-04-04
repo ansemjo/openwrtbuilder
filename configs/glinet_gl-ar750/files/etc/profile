@@ -1,0 +1,72 @@
+unset FAILSAFE
+[ -e /tmp/.failsafe ] && export FAILSAFE=1
+
+[ -f /etc/banner ] && cat /etc/banner
+[ -n "$FAILSAFE" ] && [ -f /etc/banner.failsafe ] && cat /etc/banner.failsafe
+
+if grep -Fsq '/ overlay ro,' /proc/mounts ; then
+cat << EOF
+
+ === WARNING! ======================================
+ Your JFFS2-partition seems full and overlayfs is
+ mounted as READ-ONLY!
+ Please try to remove files from /overlay/upper/...
+ and reboot!
+ ---------------------------------------------------
+
+EOF
+fi
+
+# sysinfo
+device=$(sed -n 's/.*"name": "\(.*\)"$/\1/p' /etc/board.json)
+target=$(sed -n "s/.*DISTRIB_TARGET='\(.*\)'$/\1/p" /etc/openwrt_release)
+kernel=$(uname -mrsvo)
+echo " device : $device ($target)"
+echo " kernel : $kernel"
+echo " uptime :$(uptime)"
+echo
+
+export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+HOME=$(grep -E "^${USER:-root}:" /etc/passwd | cut -d ":" -f 6)
+HOME=${HOME:-/root}
+export HOME
+export PS1="\[\e[0;1m\]\H \[\e[38;5;9m\]\w \[\e[0;1m\]\\$ \[\e[0m\]"
+export ENV=/etc/shinit
+
+case "$TERM" in
+        xterm*|rxvt*)
+                export PS1='\[\e]0;\u@\h: \w\a\]'"$PS1"
+        ;;
+esac
+
+if [ -z "$FAILSAFE" ] ; then
+        for FILE in /etc/profile.d/*.sh ; do
+                [ -f "${FILE%.sh}.hush" ] && continue
+                [ -f "$FILE" ] && . "$FILE"
+        done
+        unset FILE
+fi
+
+# aliases
+[ -x /bin/more ] || alias more=less
+[ -x /usr/bin/vim ] && alias vi=vim
+alias ls='ls --color=auto'
+alias ll='ls -alF'      # all, long, classify; pretty verbose
+
+# safeguard
+alias rm='rm -i'
+alias mv='mv -i'
+alias cp='cp -i'
+
+# show status of network ports
+alias ports='swconfig dev switch0 show | grep "link:" | sed "s/^[\t]*link: port:/port /"'
+
+# list ip addresses more readably
+ipaddr() {
+  ip addr | sed -n \
+    -e "s/^[0-9]\+: \(.*\): <.*>/\n$(printf '\033[1m\\1\033[0m'): +/;s/+ .* master \([^ ]\+\)/[\1] +/;s/+\( .*\)\? state \([^ ]\+\) .*/\2/p" \
+    -e "s/link\/\(\w\+ [0-9a-f:]\+\).*/\1/p" \
+    -e "s/inet \([^ ]\+\).*/ipv4 \1/p" \
+    -e "s/inet6 \([^ ]\+\).*/ipv6 \1/p";
+  echo;
+}
